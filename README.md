@@ -12,21 +12,25 @@
 > survives. Push past that and recall starts to drop, which is exactly the
 > tradeoff you need to see.** `python -m contextpack.eval`.
 
-Long context costs you twice. You pay per token to send it, and you pay in
-latency for every token the model has to read before it can answer. The
-LLMLingua line of work (Jiang et al., 2023) showed you can compress a prompt 2
-to 5x by dropping the tokens a language model finds highly predictable, the
-ones that add length without adding information, while keeping the tokens that
-actually carry content.
+Long context costs you twice, which is a bad deal even by SaaS pricing
+standards. You pay per token to send it, and you pay in latency for every
+token the model has to read before it gets around to answering you. The
+LLMLingua line of work (Jiang et al., 2023) showed you can compress a prompt
+2 to 5x by dropping the tokens a language model finds highly predictable, the
+ones padding the sentence out without adding a single new fact, while keeping
+the tokens that actually carry content.
 
-contextpack implements that idea with a transparent scoring proxy instead of a
-real perplexity model: function words and repeated phrases score low and go
-first, numbers and specific terms score high and stay. No model, no network,
-no dependencies, and every scoring rule is a few lines you can read.
+contextpack implements that idea with a transparent scoring proxy instead of
+a real perplexity model: function words and repeated phrases score low and
+go first, numbers and specific terms score high and get to stay. No model,
+no network, no dependencies, and every scoring rule is a few lines you can
+actually read instead of trusting.
 
-The part most compression demos skip: measuring whether it actually worked.
-Hitting a target ratio is easy. Keeping the facts an answer depends on is the
-real job, so this ships a benchmark that checks exactly that.
+The part most compression demos conveniently skip: measuring whether it
+actually worked. Hitting a target ratio is trivial, you can get there by
+keeping ten random words and calling it a day. Keeping the facts an answer
+depends on is the real job, so this ships a benchmark that checks exactly
+that instead of taking a victory lap early.
 
 ---
 
