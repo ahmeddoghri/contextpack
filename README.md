@@ -3,7 +3,7 @@
 **Shrink a prompt without shrinking the answer.**
 
 ![CI](https://github.com/ahmeddoghri/contextpack/actions/workflows/ci.yml/badge.svg)
-![tests](https://img.shields.io/badge/tests-10%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-23%20passing-brightgreen)
 ![python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![deps](https://img.shields.io/badge/runtime%20deps-none-success)
 ![license](https://img.shields.io/badge/license-MIT-black)
@@ -11,6 +11,13 @@
 > **Compress a document to 50% of its length and every load-bearing fact still
 > survives. Push past that and recall starts to drop, which is exactly the
 > tradeoff you need to see.** `python -m contextpack.eval`.
+>
+> **Update:** that 50% knee point only holds because the source document
+> writes every quantity as an Arabic numeral. The scorer's "keep this"
+> bonus for numbers is a digit-character check, so a fact-for-fact
+> restatement that spells numbers out in prose ("thirty days" instead of
+> "30 days") loses load-bearing facts at the exact ratio the benchmark
+> calls safe. Fixed: `python -m contextpack.eval_v2`.
 
 Long context costs you twice, which is a bad deal even by SaaS pricing
 standards. You pay per token to send it, and you pay in latency for every
@@ -109,10 +116,52 @@ ones do not) with zero model calls, which is exactly what you want for a
 transparent, reproducible demo. Swap in a real small-model perplexity scorer at
 the `_score_tokens` seam for production use.
 
+## The scorer only recognizes numbers written as numerals
+
+The "keep this" bonus for numbers is a one-line check: does the token
+contain a digit character. Real documents write numbers both ways, "412
+units" in one paragraph, "thirty days" in the next, and the second form
+gets none of the protection the first one does. I rewrote the bundled
+document fact-for-fact with every quantity spelled out in prose, same
+facts, same questions, only the numeral style changed, and reran the
+identical keyword-recall sweep:
+
+```bash
+python -m contextpack.eval_v2
+```
+```
+corpus / version             100%        70%        50%        35%
+adversarial / v1             100%       100%        89%        56%
+adversarial / v2             100%       100%       100%        78%
+
+holdout / v1                 100%       100%        67%        50%
+holdout / v2                 100%       100%        75%        67%
+```
+
+At the 50% ratio the README calls the safe knee point, the word-form
+document loses "thirty" (the delay that triggers the buyer's termination
+right) while the digit-form original keeps every keyword. Nothing about
+the content changed, only how the number is spelled, and that shouldn't
+be something a compression tool is sensitive to.
+
+`contextpack/compress_v2.py` gives number words (cardinals one through
+ninety plus hundred/thousand/million/billion, and their ordinals) the
+exact same +0.5 surprise bonus the original already gives digit tokens,
+matched as whole tokens so "tenth" doesn't accidentally catch "tent" or
+"tender". That restores the 50% document to 100% recall, matching the
+digit-form original exactly, and improves the 35% ratio from 56% to 78%.
+A second, independently-written holdout document (a different domain, a
+project status update instead of a contract) evaluated exactly once shows
+real but partial improvement, 67%->75% at 50%, 50%->67% at 35%, an honest
+limit: some phrasings (ordinal-plus-noun combos, full names) still need
+more than a fixed number-word list to catch. `compress.py` is untouched,
+so the published digit-numeral benchmark above still reproduces exactly;
+`CompressorV2` is opt-in.
+
 ## Tests
 
 ```bash
-pip install pytest && pytest -q      # 10 passing
+pip install pytest && pytest -q      # 23 passing
 ```
 
 ## License

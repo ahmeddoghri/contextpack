@@ -28,3 +28,5 @@ jobs:
         run: python examples/quickstart.py
       - name: Run benchmark
         run: python -m contextpack.eval
+      - name: Run word-form number comparison
+        run: python -m contextpack.eval_v2
